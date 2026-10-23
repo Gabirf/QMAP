@@ -116,6 +116,13 @@ public:
     };
     /// The heuristic method used for the search (default: IDS).
     Method method = Method::IDS;
+
+    enum class InitialPlacementStrategy : uint8_t {
+      Default,
+      ZAP
+    };
+
+    InitialPlacementStrategy initialPlacementStrategy = InitialPlacementStrategy::Default;
     /**
      * @brief The heuristic used in the A* search contains a term that resembles
      * the standard deviation of the differences between the current and target
@@ -325,6 +332,11 @@ private:
     std::vector<float> maxDistancesOfPlacedAtomsPerGroup;
   };
 
+  struct Movement {
+    std::size_t srcRow, dstRow;
+    std::size_t  srcCol, dstCol;
+  };
+
 public:
   /// Constructs an A* placer for the given architecture and configuration.
   HeuristicPlacer(const Architecture& architecture, const Config& config);
@@ -341,6 +353,16 @@ public:
         const std::vector<TwoQubitGateLayer>& twoQubitGateLayers,
         const std::vector<std::unordered_set<qc::Qubit>>& reuseQubits)
       -> std::vector<Placement> override;
+
+  using InitialPlacementStrategy = Config::InitialPlacementStrategy;
+
+  void setInitialPlacementStrategy(InitialPlacementStrategy strategy) noexcept {
+    config_.initialPlacementStrategy = strategy;
+  }
+
+  [[nodiscard]] InitialPlacementStrategy getInitialPlacementStrategy() const noexcept {
+    return config_.initialPlacementStrategy;
+  }
 
 private:
   /**
@@ -848,6 +870,62 @@ private:
    * initial placement
    */
   [[nodiscard]] auto makeInitialPlacement(size_t nQubits) const -> Placement;
+
+  /**
+   * @brief Computes storage sites and their average proximity to entanglement zones.
+   * @return A list of pairs containing the storage site and its proximity score.
+   */
+  [[nodiscard]] auto getStorageZoneSlots() const
+      -> std::vector<std::pair<Site, double>>;
+
+  /**
+   * @brief Computes the importance/weight of the qubit based on usage and earliness.
+   * @return A list of pairs containing the qubit and its weight.
+   */
+  [[nodiscard]] auto getQubitWeightList(
+      const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
+      -> std::vector<std::pair<qc::Qubit, double>>;
+
+  /**
+   * @brief Gives the 1st each qubit was present in until phaseIdx == lookaheadWindow.
+   * @param nQubits is the total number of qubits in the quantum computation
+   * @param lookaheadWindow defines how far the search space should go.
+   * @param twoQubitGateLayers is a list of all layers containing 2 qubit gate interactions.
+   * @return A mapping from qubit to the earliest layer it appears in.
+   */
+  [[nodiscard]] auto getFirstStages(const std::size_t nQubits,
+    const std::size_t lookaheadWindow,
+    const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
+    -> std::unordered_map<qc::Qubit, std::size_t>;
+
+  [[nodiscard]] auto hasConflict1D(std::size_t k_cand, std::size_t v_cand, std::size_t k, std::size_t v) const -> bool;
+
+  [[nodiscard]] auto countConflictsWithGroup(
+    const Movement& move_cand,
+    const std::vector<Movement>& group) const -> size_t;
+
+  /**
+   * @brief Gives the 1st each qubit was present in until phaseIdx == lookaheadWindow.
+   * @param nQubits is the total number of qubits in the quantum computation
+   * @param lookaheadWindow defines how far the search space should go.
+   * @param twoQubitGateLayers is a list of all layers containing 2 qubit gate interactions.
+   * @return A mapping from qubit to the earliest layer it appears in.
+   */
+  [[nodiscard]] auto getAssignments(const std::vector<std::pair<Site, double>>& zoneSlots,
+    const std::vector<std::pair<qc::Qubit, double>>& qubitWeightList,
+    const std::unordered_map<qc::Qubit, std::size_t>& firstStages,
+    std::size_t nQubits) const
+    -> std::map<qc::Qubit, Site>;
+
+  /**
+   * @brief This function imitates ZAP's initial placement.
+   * @param nQubits is the total number of qubits in the quantum computation
+   * @return a list of tuples containing the SLM, row, and column of the atom's
+   * initial placement
+   */
+  [[nodiscard]] auto makeInitialPlacementZAP(const size_t nQubits,
+  const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
+    -> Placement;
 
   /**
    * @brief Generates the placements for the next two-qubit and single-qubit

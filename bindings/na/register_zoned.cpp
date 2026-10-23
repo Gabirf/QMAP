@@ -85,6 +85,15 @@ Returns:
     The architecture as a .namachine string)pb");
 
   //===--------------------------------------------------------------------===//
+  // Initial Placement Strategy Enum
+  //===--------------------------------------------------------------------===//
+  nb::enum_<na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy>(
+      m, "InitialPlacementStrategy")
+      .value("Default", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::Default)
+      .value("ZAP", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::ZAP)
+      .export_values();
+
+  //===--------------------------------------------------------------------===//
   // Placement Method Enum
   //===--------------------------------------------------------------------===//
   nb::enum_<na::zoned::HeuristicPlacer::Config::Method>(
@@ -240,6 +249,7 @@ Returns:
            const size_t windowMinWidth, const double windowRatio,
            const double windowShare,
            const na::zoned::HeuristicPlacer::Config::Method placementMethod,
+           const na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy initialPlacementStrategy,
            const float deepeningFactor, const float deepeningValue,
            const float lookaheadFactor, const float reuseLevel,
            const size_t maxNodes, const size_t trials,
@@ -255,6 +265,7 @@ Returns:
               .windowRatio = windowRatio,
               .windowShare = windowShare,
               .method = placementMethod,
+              .initialPlacementStrategy = initialPlacementStrategy,
               .deepeningFactor = deepeningFactor,
               .deepeningValue = deepeningValue,
               .lookaheadFactor = lookaheadFactor,
@@ -285,6 +296,8 @@ Returns:
             defaultConfig.layoutSynthesizerConfig.placerConfig.windowShare,
         "placement_method"_a =
             defaultConfig.layoutSynthesizerConfig.placerConfig.method,
+        "initial_placement_strategy"_a =
+            defaultConfig.layoutSynthesizerConfig.placerConfig.initialPlacementStrategy,
         "deepening_factor"_a =
             defaultConfig.layoutSynthesizerConfig.placerConfig.deepeningFactor,
         "deepening_value"_a =
@@ -380,4 +393,9 @@ Returns:
 
 Returns:
     The statistics as a dictionary)pb");
+
+  nb::class_<na::zoned::HeuristicPlacer>(m, "HeuristicPlacer")
+      .def_prop_rw("initial_placement_strategy",
+                   &na::zoned::HeuristicPlacer::getInitialPlacementStrategy,
+                   &na::zoned::HeuristicPlacer::setInitialPlacementStrategy);
 }

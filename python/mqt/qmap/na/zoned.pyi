@@ -137,6 +137,11 @@ class RoutingAgnosticCompiler:
         Returns:
             The statistics as a JSON-style dictionary
         """
+class InitialPlacementStrategy(enum.Enum):
+    """Enumeration of initial placement strategies."""
+
+    Default = 0
+    ZAP = 1
 
 class RoutingAwareCompiler:
     """Routing-aware zoned neutral atom compiler."""
@@ -151,6 +156,7 @@ class RoutingAwareCompiler:
         window_ratio: float = 1.0,
         window_share: float = 0.8,
         placement_method: PlacementMethod = ...,
+        initial_placement_strategy: InitialPlacementStrategy = ...,
         deepening_factor: float = ...,
         deepening_value: float = 0.0,
         lookahead_factor: float = ...,
