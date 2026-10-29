@@ -438,11 +438,15 @@ auto HeuristicPlacer::makeInitialPlacementZAP(const size_t nQubits,
 
   std::vector<std::pair<Site, double>> zoneSlots = getStorageZoneSlots();
   std::vector<std::pair<qc::Qubit, double>> qubitWeightList = getQubitWeightList(twoQubitGateLayers);
-  const std::size_t lookaheadWindow = 2;  //Can be changed but defined as 2 in ZAP
+  const std::size_t lookaheadWindow = 10;  //Can be changed but defined as 2 in ZAP
   std::unordered_map<qc::Qubit, std::size_t> firstStages = getFirstStages(nQubits, lookaheadWindow, twoQubitGateLayers);
 
   std::ranges::sort(zoneSlots, [](const auto& a, const auto& b){return a.second < b.second;});
   std::ranges::sort(qubitWeightList, [](const auto& a, const auto& b){return a.second > b.second;});
+
+  if (zoneSlots.size() > nQubits) {
+    zoneSlots.erase(zoneSlots.begin() + static_cast<std::ptrdiff_t>(nQubits), zoneSlots.end());
+  }
 
   const auto& assignments = getAssignments(zoneSlots, qubitWeightList, firstStages, nQubits);
 
