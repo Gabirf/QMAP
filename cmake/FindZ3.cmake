@@ -191,7 +191,8 @@ find_package_handle_standard_args(
 
 if(Z3_FOUND)
   if(NOT TARGET z3::z3lib)
-    add_library(z3::z3lib INTERFACE IMPORTED GLOBAL)
+    add_library(z3::z3lib INTERFACE IMPORTED GLOBAL
+            ../test_run.cpp)
     target_include_directories(z3::z3lib INTERFACE ${Z3_CXX_INCLUDE_DIRS})
     target_link_libraries(z3::z3lib INTERFACE ${Z3_LIBRARIES})
   endif()

@@ -396,4 +396,24 @@ TEST(HeuristicPlacerTest, AStarSearch) {
       1'000'000);
   EXPECT_EQ(goal, nodes[14]);
 }
+TEST(InitialPlacementTest, TestZAP) {
+  const auto architecture = Architecture::fromJSONString(architectureJson);
+  HeuristicPlacer::Config config;
+
+  // Set your strategy: ZAP, BasicPair, or ColBlock
+  config.initialPlacementStrategy = HeuristicPlacer::Config::InitialPlacementStrategy::ColBlock;
+
+  HeuristicPlacer placer(architecture, config);
+
+  // 4 qubits with two-qubit gate (0, 1) and (2, 3)
+  constexpr size_t nQubits = 4;
+  std::vector<TwoQubitGateLayer>  layers = {
+    {{{0U, 1U}, {2U, 3U}}}
+  };
+
+  const auto placements = placer.place(nQubits, layers, {});
+
+  std::cout << ">>> Placement succeeded! Number of stages: "
+            << placements.size() << std::endl;
+}
 } // namespace na::zoned
