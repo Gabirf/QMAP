@@ -92,7 +92,7 @@ Returns:
       .value("Default", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::Default)
       .value("ZAP", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::ZAP)
       .value("BasicPair", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::BasicPair)
-      .value("ColBlock", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::ColBlock)
+      .value("VIPER", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::VIPER)
       .export_values();
 
   //===--------------------------------------------------------------------===//
