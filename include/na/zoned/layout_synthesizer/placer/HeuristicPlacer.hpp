@@ -44,6 +44,7 @@ using RowColumnMap =
 using RowColumnSet =
     std::unordered_set<std::pair<std::reference_wrapper<const SLM>, size_t>>;
 
+//VIPER
 namespace {
 
   struct Phase;
@@ -56,7 +57,7 @@ namespace {
       : sites{std::move(s1), std::move(s2)}, count{2} {}
 
     // Constructor for a single column (1 site)
-    RowEntry(Site s1)
+    RowEntry(const Site& s1)
         : sites{s1, s1}, count{1} {}
   };
 
@@ -76,10 +77,10 @@ namespace {
     //after being assigned
     std::vector<TakenRow> takenRows;
 
-    [[nodiscard]] bool isSubblock() const noexcept {
+    [[nodiscard]] auto isSubblock() const noexcept -> bool {
       return parentBlock != nullptr;
     }
-    [[nodiscard]] bool isAssigned() const noexcept {
+    [[nodiscard]] auto isAssigned() const noexcept -> bool {
       return !takenRows.empty();
     }
 
@@ -91,7 +92,7 @@ namespace {
       }
     }
 
-    bool operator<(const Block& other) const noexcept {
+    auto operator<(const Block& other) const noexcept -> bool {
 
       if (weight != other.weight) {
         return weight > other.weight;
@@ -113,7 +114,7 @@ namespace {
 
     std::vector<Block*> blocks;
 
-    [[nodiscard]] bool hasCapacity() const noexcept {
+    [[nodiscard]] auto hasCapacity() const noexcept -> bool {
       return !freeRows.empty();
     }
 
@@ -129,10 +130,10 @@ namespace {
           score += siteScoreMap.at(rowEntry.sites[i]);
         }
       }
-      score /= static_cast<double>(freeRows.size());
+      score /= static_cast<double>(freeRows.size()) * freeRows.front().count;
     }
 
-    bool operator<(const ColumnPair& other) const noexcept {
+    auto operator<(const ColumnPair& other) const noexcept -> bool {
       if (score != other.score) {
         return score < other.score;
       }
@@ -156,6 +157,48 @@ namespace {
 
     std::set<ColumnPair> columnPairs;
     std::set<Block> blocks;
+  };
+}
+
+//COBRA
+namespace {
+
+  struct ZoneSlot {
+    std::size_t id{0};
+    Site site;
+    double score{0.0};
+    mutable std::optional<qc::Qubit> qubit;
+
+    auto operator<(const ZoneSlot& other) const noexcept -> bool {
+      return id < other.id;
+    }
+  };
+
+  struct InteractionWeightMatrix {
+  private:
+    std::size_t n_{0};
+    std::vector<double> weights_;
+
+  public:
+    explicit InteractionWeightMatrix(std::size_t nQubits)
+        : n_(nQubits), weights_(nQubits * nQubits, 0.0) {}
+
+    void addInteraction(qc::Qubit q1, qc::Qubit q2, double weight) {
+      weights_[q1 * n_ + q2] += weight;
+      weights_[q2 * n_ + q1] += weight;
+    }
+
+  [[nodiscard]] auto getWeight(qc::Qubit q1, qc::Qubit q2) const -> double {
+      return weights_[q1 * n_ + q2];
+    }
+  };
+
+  struct COBRA {
+    std::set<ZoneSlot> zoneSlots;
+    InteractionWeightMatrix interactionWeightMatrix;
+
+    explicit COBRA(std::size_t nQubits)
+      : interactionWeightMatrix(nQubits) {}
   };
 }
 
@@ -238,7 +281,8 @@ public:
       Default,
       ZAP,
       BasicPair,
-      ColBlock
+      VIPER,
+      COBRA
     };
 
     InitialPlacementStrategy initialPlacementStrategy = InitialPlacementStrategy::Default;
@@ -479,7 +523,7 @@ public:
     config_.initialPlacementStrategy = strategy;
   }
 
-  [[nodiscard]] InitialPlacementStrategy getInitialPlacementStrategy() const noexcept {
+  [[nodiscard]] auto getInitialPlacementStrategy() const noexcept -> InitialPlacementStrategy {
     return config_.initialPlacementStrategy;
   }
 
@@ -1006,24 +1050,24 @@ private:
   [[nodiscard]] auto initPlacementZone(size_t nQubits) const
     -> PlacementZone;
 
-  [[nodiscard]] auto getQubitWeightMap(
-    const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
+  [[nodiscard]] static auto getQubitWeightMap(
+    const std::vector<TwoQubitGateLayer>& twoQubitGateLayers)
     -> std::map<qc::Qubit, double>;
 
   /**
    * @brief Computes the importance/weight of the qubit based on usage and earliness.
    * @return A list of pairs containing the qubit and its weight.
    */
-  [[nodiscard]] auto getQubitWeightList(
-      const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
+  [[nodiscard]] static auto getQubitWeightList(
+      const std::vector<TwoQubitGateLayer>& twoQubitGateLayers)
       -> std::vector<std::pair<qc::Qubit, double>>;
 
-  [[nodiscard]] auto getQubitPairWeightList(
+  [[nodiscard]] static auto getQubitPairWeightList(
     const std::vector<TwoQubitGateLayer>& twoQubitGateLayers ,
-    std::size_t lookaheadWindow) const
-    -> std::vector<std::pair<std::pair<qc::Qubit, qc::Qubit>, double>>;
+    std::size_t lookaheadWindow)
+      -> std::vector<std::pair<std::pair<qc::Qubit, qc::Qubit>, double>>;
 
-  [[nodiscard]] auto getQubitBlockAssignement(
+  [[nodiscard]] auto getQubitBlockAssignment(
     PlacementZone& placementZone,
     const std::vector<TwoQubitGateLayer>& twoQubitGateLayers,
     std::size_t lookaheadWindow) const;
@@ -1042,12 +1086,11 @@ private:
     -> std::unordered_map<qc::Qubit, std::size_t>;
 
   [[nodiscard]] auto getFirstStagesPair(
-    std::size_t nQubits,
     std::size_t lookaheadWindow,
     const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
     -> std::unordered_map<std::pair<qc::Qubit, qc::Qubit>, std::size_t>;
 
-  [[nodiscard]] auto hasConflict1D(std::size_t k_cand, std::size_t v_cand, std::size_t k, std::size_t v) const -> bool;
+  static [[nodiscard]] auto hasConflict1D(std::size_t k_cand, std::size_t v_cand, std::size_t k, std::size_t v) -> bool;
 
   [[nodiscard]] auto countConflictsWithGroup(
     const Movement& move_cand,
@@ -1060,9 +1103,10 @@ private:
 
   /**
    * @brief Gives the 1st each qubit was present in until phaseIdx == lookaheadWindow.
+   * @param zoneSlots
+   * @param qubitWeightList
+   * @param firstStages
    * @param nQubits is the total number of qubits in the quantum computation
-   * @param lookaheadWindow defines how far the search space should go.
-   * @param twoQubitGateLayers is a list of all layers containing 2 qubit gate interactions.
    * @return A mapping from qubit to the earliest layer it appears in.
    */
   [[nodiscard]] auto getAssignments(const std::vector<std::pair<Site, double>>& zoneSlots,
@@ -1097,11 +1141,14 @@ private:
       std::size_t heightCoef) const
       -> std::unordered_map<qc::Qubit, Site>;
 
-  [[nodiscard]] auto testOutput(std::unordered_map<qc::Qubit, Site>& assignments, std::size_t nQubits) const;
+  [[nodiscard]] auto testOutput(const std::unordered_map<qc::Qubit, Site>& assignments, std::size_t nQubits) const;
+
+  [[nodiscard]] auto getCOBRA();
 
   /**
    * @brief This function imitates ZAP's initial placement.
    * @param nQubits is the total number of qubits in the quantum computation
+   * @param twoQubitGateLayers
    * @param ips describes which Initial Placement Strategy to use.
    * @return a list of tuples containing the SLM, row, and column of the atom's
    * initial placement
@@ -1142,7 +1189,7 @@ private:
       const std::unordered_set<qc::Qubit>& previousReuseQubits,
       const std::unordered_set<qc::Qubit>& reuseQubits,
       const TwoQubitGateLayer& twoQubitGates,
-      const TwoQubitGateLayer& nextTwoQubitGates)
+      const TwoQubitGateLayer& nextTwoQubitGates) const
       -> std::pair<Placement, Placement>;
 
   /**
@@ -1171,7 +1218,7 @@ private:
       const std::unordered_set<qc::Qubit>& reuseQubits,
       const TwoQubitGateLayer& twoQubitGates,
       const std::unordered_set<qc::Qubit>& nextReuseQubits,
-      const TwoQubitGateLayer& nextTwoQubitGates) -> Placement;
+      const TwoQubitGateLayer& nextTwoQubitGates) const -> Placement;
 
   /**
    * @brief This function places qubits from the entanglement zone in the
@@ -1191,7 +1238,7 @@ private:
   auto placeAtomsInStorageZone(const Placement& previousPlacement,
                                const std::unordered_set<qc::Qubit>& reuseQubits,
                                const TwoQubitGateLayer& twoQubitGates,
-                               const TwoQubitGateLayer& nextTwoQubitGates)
+                               const TwoQubitGateLayer& nextTwoQubitGates) const
       -> Placement;
 
   /**

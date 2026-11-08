@@ -401,7 +401,7 @@ TEST(InitialPlacementTest, TestZAP) {
   HeuristicPlacer::Config config;
 
   // Set your strategy: ZAP, BasicPair, or ColBlock
-  config.initialPlacementStrategy = HeuristicPlacer::Config::InitialPlacementStrategy::ColBlock;
+  config.initialPlacementStrategy = HeuristicPlacer::Config::InitialPlacementStrategy::VIPER;
 
   HeuristicPlacer placer(architecture, config);
 
