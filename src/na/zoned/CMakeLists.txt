@@ -12,7 +12,10 @@ if(NOT TARGET ${TARGET_NAME})
   file(GLOB_RECURSE HEADERS ${MQT_QMAP_INCLUDE_BUILD_DIR}/na/zoned/*.hpp)
   file(GLOB_RECURSE SOURCES *.cpp)
 
-  add_library(${TARGET_NAME} ${HEADERS} ${SOURCES})
+  add_library(${TARGET_NAME} ${HEADERS} ${SOURCES}
+          layout_synthesizer/placer/IPS/COBRA.cpp
+          layout_synthesizer/placer/IPS/Common.cpp
+  )
 
   target_include_directories(${TARGET_NAME} PUBLIC $<BUILD_INTERFACE:${MQT_QMAP_INCLUDE_BUILD_DIR}>)
 

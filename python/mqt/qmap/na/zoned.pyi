@@ -143,7 +143,8 @@ class InitialPlacementStrategy(enum.Enum):
     Default = 0
     ZAP = 1
     BasicPair = 2
-    ColBlock = 3
+    VIPER = 3
+    COBRA = 4
 
 class RoutingAwareCompiler:
     """Routing-aware zoned neutral atom compiler."""

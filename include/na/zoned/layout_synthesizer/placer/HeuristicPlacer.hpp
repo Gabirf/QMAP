@@ -160,47 +160,6 @@ namespace {
   };
 }
 
-//COBRA
-namespace {
-
-  struct ZoneSlot {
-    std::size_t id{0};
-    Site site;
-    double score{0.0};
-    mutable std::optional<qc::Qubit> qubit;
-
-    auto operator<(const ZoneSlot& other) const noexcept -> bool {
-      return id < other.id;
-    }
-  };
-
-  struct InteractionWeightMatrix {
-  private:
-    std::size_t n_{0};
-    std::vector<double> weights_;
-
-  public:
-    explicit InteractionWeightMatrix(std::size_t nQubits)
-        : n_(nQubits), weights_(nQubits * nQubits, 0.0) {}
-
-    void addInteraction(qc::Qubit q1, qc::Qubit q2, double weight) {
-      weights_[q1 * n_ + q2] += weight;
-      weights_[q2 * n_ + q1] += weight;
-    }
-
-  [[nodiscard]] auto getWeight(qc::Qubit q1, qc::Qubit q2) const -> double {
-      return weights_[q1 * n_ + q2];
-    }
-  };
-
-  struct COBRA {
-    std::set<ZoneSlot> zoneSlots;
-    InteractionWeightMatrix interactionWeightMatrix;
-
-    explicit COBRA(std::size_t nQubits)
-      : interactionWeightMatrix(nQubits) {}
-  };
-}
 
 /**
  * @brief The heuristic placer is a class that provides a method to determine
@@ -493,11 +452,6 @@ private:
      * target location
      */
     std::vector<float> maxDistancesOfPlacedAtomsPerGroup;
-  };
-
-  struct Movement {
-    std::size_t srcRow, dstRow;
-    std::size_t  srcCol, dstCol;
   };
 
 public:
@@ -1034,38 +988,8 @@ private:
    */
   [[nodiscard]] auto makeInitialPlacement(size_t nQubits) const -> Placement;
 
-  [[nodiscard]] auto getStorageZoneSizes() const
-    -> std::pair<std::size_t, std::size_t>;
-
-  /**
-   * @brief Computes storage sites and their average proximity to entanglement zones.
-   * @return A list of pairs containing the storage site and its proximity score.
-   */
-  [[nodiscard]] auto getStorageZoneSlots() const
-      -> std::vector<std::pair<Site, double>>;
-
-  [[nodiscard]] auto getHeightLimit(std::size_t nQubits) const
-    -> std::size_t;
-
   [[nodiscard]] auto initPlacementZone(size_t nQubits) const
     -> PlacementZone;
-
-  [[nodiscard]] static auto getQubitWeightMap(
-    const std::vector<TwoQubitGateLayer>& twoQubitGateLayers)
-    -> std::map<qc::Qubit, double>;
-
-  /**
-   * @brief Computes the importance/weight of the qubit based on usage and earliness.
-   * @return A list of pairs containing the qubit and its weight.
-   */
-  [[nodiscard]] static auto getQubitWeightList(
-      const std::vector<TwoQubitGateLayer>& twoQubitGateLayers)
-      -> std::vector<std::pair<qc::Qubit, double>>;
-
-  [[nodiscard]] static auto getQubitPairWeightList(
-    const std::vector<TwoQubitGateLayer>& twoQubitGateLayers ,
-    std::size_t lookaheadWindow)
-      -> std::vector<std::pair<std::pair<qc::Qubit, qc::Qubit>, double>>;
 
   [[nodiscard]] auto getQubitBlockAssignment(
     PlacementZone& placementZone,
@@ -1089,12 +1013,6 @@ private:
     std::size_t lookaheadWindow,
     const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
     -> std::unordered_map<std::pair<qc::Qubit, qc::Qubit>, std::size_t>;
-
-  [[nodiscard]] auto hasConflict1D(std::size_t k_cand, std::size_t v_cand, std::size_t k, std::size_t v) const -> bool;
-
-  [[nodiscard]] auto countConflictsWithGroup(
-    const Movement& move_cand,
-    const std::vector<Movement>& group) const -> size_t;
 
   [[nodiscard]] auto blockToColStats( const Block& block,
     const std::vector<ColumnPair*>& columnPairs,
