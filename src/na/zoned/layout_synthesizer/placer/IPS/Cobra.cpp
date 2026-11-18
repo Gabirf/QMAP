@@ -227,7 +227,6 @@ auto getAssignments(const std::size_t nQubits,
     }
   }
 
-
   assert(result.size() == nQubits &&
          "Failure to assign all qubits, check height condition");
   return result;
