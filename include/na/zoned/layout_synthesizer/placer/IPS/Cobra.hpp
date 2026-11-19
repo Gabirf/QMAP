@@ -61,6 +61,20 @@ public:
   }
 };
 
+/**
+ * @brief Computes the initial placement of qubits onto storage sites using COBRA.
+ *
+ * Seeds placement at the site closest to the entanglement zone, then iteratively
+ * expands placement outward using a priority search queue of adjacent slots to
+ * place tightly coupled qubits in neighboring traps.
+ *
+ * @param nQubits Number of logical qubits in the circuit.
+ * @param twoQubitGateLayers Layers of 2-qubit gates representing circuit interactions.
+ * @param architecture Target zoned neutral-atom hardware architecture.
+ * @param reverseInitialPlacement If true, places qubits starting from the row closest
+ * to the entanglement zone in reverse orientation.
+ * @return Mapping from logical qubits to physical sites (SLM traps).
+ */
 [[nodiscard]] auto getAssignments(std::size_t nQubits,
                     const std::vector<TwoQubitGateLayer>& twoQubitGateLayers,
                     const Architecture& architecture,

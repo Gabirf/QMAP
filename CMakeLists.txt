@@ -107,7 +107,8 @@ endif()
 
 add_executable(debug_placer test_run.cpp
         include/na/zoned/layout_synthesizer/placer/IPS/COBRA.hpp
-        include/na/zoned/layout_synthesizer/placer/IPS/Common.hpp)
+        include/na/zoned/layout_synthesizer/placer/IPS/Common.hpp
+        include/na/zoned/layout_synthesizer/placer/IPS/Viper.hpp)
 target_include_directories(debug_placer PRIVATE ${MQT_QMAP_INCLUDE_BUILD_DIR})
 target_compile_features(debug_placer PRIVATE cxx_std_20)
 target_link_libraries(debug_placer PRIVATE MQT::QMapNAZoned MQT::CoreQASM)

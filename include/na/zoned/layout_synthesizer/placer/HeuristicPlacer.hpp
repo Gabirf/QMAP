@@ -44,121 +44,7 @@ using RowColumnMap =
 using RowColumnSet =
     std::unordered_set<std::pair<std::reference_wrapper<const SLM>, size_t>>;
 
-//VIPER
-namespace {
 
-  struct Phase;
-
-  struct RowEntry {
-    std::array<Site, 2> sites;
-    std::uint8_t count; // 1 for single column, 2 for pair
-
-    RowEntry(Site s1, Site s2)
-      : sites{std::move(s1), std::move(s2)}, count{2} {}
-
-    // Constructor for a single column (1 site)
-    RowEntry(const Site& s1)
-        : sites{s1, s1}, count{1} {}
-  };
-
-  struct TakenRow {
-    RowEntry traps;
-    std::array<qc::Qubit, 2> qubits;
-  };
-
-  struct Block {
-    Block* parentBlock{nullptr};
-    std::size_t id{0};
-    std::size_t phaseIndex{0};
-    double weight{0};
-
-    //before being assigned
-    std::vector<std::pair<qc::Qubit, qc::Qubit>> qubitPairs;
-    //after being assigned
-    std::vector<TakenRow> takenRows;
-
-    [[nodiscard]] auto isSubblock() const noexcept -> bool {
-      return parentBlock != nullptr;
-    }
-    [[nodiscard]] auto isAssigned() const noexcept -> bool {
-      return !takenRows.empty();
-    }
-
-    void updateWeight(const std::unordered_map<qc::Qubit, double>& qubitWeighMap) {
-      weight = 0;
-
-      for (const auto& [q0, q1] : qubitPairs) {
-        weight += (qubitWeighMap.at(q0) + qubitWeighMap.at(q1)) / 2.0;
-      }
-    }
-
-    auto operator<(const Block& other) const noexcept -> bool {
-
-      if (weight != other.weight) {
-        return weight > other.weight;
-      } if (phaseIndex != other.phaseIndex) {
-        return phaseIndex < other.phaseIndex;
-      } else {
-        return id < other.id;
-      }
-    }
-  };
-
-  struct ColumnPair {
-
-    double score{0};
-    std::size_t id{0};
-    std::vector<RowEntry> freeRows;
-    std::vector<TakenRow> takenRows;
-    std::vector<RowEntry> prunedRows;
-
-    std::vector<Block*> blocks;
-
-    [[nodiscard]] auto hasCapacity() const noexcept -> bool {
-      return !freeRows.empty();
-    }
-
-    void updateScore(const std::unordered_map<Site, double>& siteScoreMap) {
-      if (freeRows.empty()) {
-        score = static_cast<double>(INTMAX_MAX);
-        return;
-      }
-
-      score = 0;
-      for (const auto& rowEntry : freeRows) {
-        for (std::size_t i = 0; i < rowEntry.count; i++) {
-          score += siteScoreMap.at(rowEntry.sites[i]);
-        }
-      }
-      score /= static_cast<double>(freeRows.size()) * freeRows.front().count;
-    }
-
-    auto operator<(const ColumnPair& other) const noexcept -> bool {
-      if (score != other.score) {
-        return score < other.score;
-      }
-      return id < other.id;
-    }
-  };
-
-  struct Phase {
-    std::size_t index{0};
-    std::size_t maxHeight{0};
-    std::vector<Block*> blocks;
-  };
-
-  struct PlacementZone {
-    std::size_t nFreeColumnPairs;
-    std::size_t heightLimit;
-    std::unordered_map<std::size_t, std::size_t> nextId;
-
-    std::unordered_map<Site, double> siteScoreMap;
-    std::unordered_map<qc::Qubit, double> qubitWeightMap;
-
-    std::set<ColumnPair> columnPairs;
-    std::set<Block> blocks;
-  };
-}
 
 
 /**
@@ -236,6 +122,7 @@ public:
     /// The heuristic method used for the search (default: IDS).
     Method method = Method::IDS;
 
+    /// The Initial Placement Strategy used to create the Initial Mapping (default: Left to Right)
     enum class InitialPlacementStrategy : uint8_t {
       Default,
       ZAP,
@@ -986,15 +873,8 @@ private:
    * @return a list of tuples containing the SLM, row, and column of the atom's
    * initial placement
    */
-  [[nodiscard]] auto makeInitialPlacement(size_t nQubits) const -> Placement;
-
-  [[nodiscard]] auto initPlacementZone(size_t nQubits) const
-    -> PlacementZone;
-
-  [[nodiscard]] auto getQubitBlockAssignment(
-    PlacementZone& placementZone,
-    const std::vector<TwoQubitGateLayer>& twoQubitGateLayers,
-    std::size_t lookaheadWindow) const;
+  [[nodiscard]] auto makeInitialPlacement(size_t nQubits) const
+    -> Placement;
 
   /**
    * @brief Gives the 1st each qubit was present in until phaseIdx == lookaheadWindow.
@@ -1013,11 +893,6 @@ private:
     std::size_t lookaheadWindow,
     const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
     -> std::unordered_map<std::pair<qc::Qubit, qc::Qubit>, std::size_t>;
-
-  [[nodiscard]] auto blockToColStats( const Block& block,
-    const std::vector<ColumnPair*>& columnPairs,
-    std::size_t maxHeight) const
-    -> std::pair<bool, std::size_t>;
 
   /**
    * @brief Gives the 1st each qubit was present in until phaseIdx == lookaheadWindow.
@@ -1038,26 +913,6 @@ private:
     const std::vector<std::pair<std::pair<qc::Qubit, qc::Qubit>, double>>& qubitWeightPairList,
     const std::vector<std::pair<qc::Qubit, double>>& qubitWeightList) const
     -> std::unordered_map<qc::Qubit, Site>;
-
-  [[nodiscard]] auto colToBlockSplitHelper(
-    PlacementZone& placementZone,
-    const Block& block,
-    const std::set<ColumnPair>::iterator& bestColumnPair) const;
-
-
-  [[nodiscard]] auto colToBlockInsertHelper(
-      PlacementZone& placementZone,
-      const Block& block,
-      const ColumnPair& columnPair) const;
-
-  [[nodiscard]] auto assignBlockToCol(
-      PlacementZone& placementZone,
-      std::size_t heightCoef) const;
-
-  [[nodiscard]] auto getAssignmentsColBlock(size_t nQubits,
-      PlacementZone& placementZone,
-      std::size_t heightCoef) const
-      -> std::unordered_map<qc::Qubit, Site>;
 
   [[nodiscard]] auto testOutput(const std::unordered_map<qc::Qubit, Site>& assignments, std::size_t nQubits) const;
 

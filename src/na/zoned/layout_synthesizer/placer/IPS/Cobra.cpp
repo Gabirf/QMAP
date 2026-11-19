@@ -3,11 +3,18 @@
 
 #include "na/zoned/layout_synthesizer/placer/IPS/Common.hpp"
 
-#include <fmt/core.h>
 #include <format>
 namespace na::zoned::ips::cobra {
 
 namespace {
+
+/**
+ * @brief Constructs an InteractionWeightMatrix from circuit qubit pair weights.
+ * 
+ * @param nQubits Number of qubits in the circuit.
+ * @param qubitPairWeightList List of qubit pairs and their accumulated interaction weights.
+ * @return Fully initialized symmetric InteractionWeightMatrix.
+ */
 auto getInteractionWeightMatrix(
     const std::size_t nQubits,
     std::vector<std::pair<std::pair<qc::Qubit, qc::Qubit>, double>>&
@@ -22,6 +29,18 @@ auto getInteractionWeightMatrix(
   return interactionWeightMatrix;
 }
 
+/**
+ * @brief Assigns the highest-weight unassigned qubit to a given storage site.
+ * 
+ * Used for the initial seed placement or as a fallback when no candidate
+ * neighbor has an interaction with already placed qubits.
+ * 
+ * @param architecture Target zoned neutral-atom architecture.
+ * @param qubitWeightList List of qubits and their individual interaction weights.
+ * @param slots Grid of zone slots representing storage trap locations.
+ * @param bestSlot Physical site to assign the qubit to.
+ * @param assigned Set tracking all currently assigned qubits.
+ */
 auto firstAssignment(
     const Architecture& architecture,
     const std::vector<std::pair<qc::Qubit, double>>& qubitWeightList,
@@ -43,6 +62,22 @@ auto firstAssignment(
   assigned.insert(maxWeightQubit);
 }
 
+/**
+ * @brief Explores and adds valid orthogonal grid neighbors of a site to the candidate set.
+ * 
+ * Checks adjacent site coordinates (up, down, left, right) respecting grid boundaries
+ * and the maximum row height limit, then adds unvisited sites to the search set.
+ * 
+ * @param architecture Target zoned neutral-atom architecture.
+ * @param zoneSlots Precomputed storage zone sites and distance scores.
+ * @param searchZoneSet Priority set of candidate unassigned neighbor slots.
+ * @param site The reference site whose neighbors are being queried.
+ * @param visitedSlots Boolean tracking matrix indicating which sites have been visited.
+ * @param maxHeight Maximum allowed row height from the initial placement boundary.
+ * @param reverseInitialPlacement Whether placement starts from the bottom or top row.
+ * @param nextSlotIdx Counter used for deterministic tie-breaking in searchZoneSet.
+ * @return Updated nextSlotIdx counter.
+ */
 auto addSiteNeighbours(const Architecture& architecture,
                        std::vector<std::pair<Site, double>>& zoneSlots,
                        std::set<ZoneSlot>& searchZoneSet, const Site& site,
@@ -89,6 +124,21 @@ auto addSiteNeighbours(const Architecture& architecture,
   return nextSlotIdx;
 }
 
+/**
+ * @brief Selects and assigns the best-fitting qubit to the next candidate slot.
+ * 
+ * Extracts the highest-priority slot from the search set, evaluates candidate qubits
+ * based on cumulative interaction weights with already placed neighbors, and assigns
+ * the best matching qubit. If no interaction exists, falls back to firstAssignment.
+ * 
+ * @param architecture Target zoned neutral-atom architecture.
+ * @param qubitWeightList List of qubits and their individual interaction weights.
+ * @param iwMatrix Symmetric matrix containing pairwise interaction weights.
+ * @param searchZoneSet Priority set of candidate unassigned slots.
+ * @param slots Grid of zone slots representing storage trap locations.
+ * @param assigned Set tracking all currently assigned qubits.
+ * @return The physical site to which a qubit was assigned.
+ */
 auto assignQubitToSite(
     const Architecture& architecture,
     const std::vector<std::pair<qc::Qubit, double>>& qubitWeightList,
