@@ -14,8 +14,9 @@ struct ZoneSlot {
   double score{0.0};
   mutable std::optional<qc::Qubit> qubit{std::nullopt};
 
-  explicit ZoneSlot(Site s, std::size_t slotId = 0, double sc = 0.0, std::optional<qc::Qubit> q = std::nullopt)
-      : id(slotId), site(std::move(s)), score(sc),  qubit(q){}
+  explicit ZoneSlot(Site s, std::size_t slotId = 0, double sc = 0.0,
+                    std::optional<qc::Qubit> q = std::nullopt)
+      : id(slotId), site(std::move(s)), score(sc), qubit(q) {}
 
   auto operator==(const ZoneSlot& other) const noexcept -> bool {
     return site == other.site;
@@ -48,7 +49,7 @@ public:
     return weights_[q1 * n_ + q2];
   }
 
-  [[nodiscard]] auto getRowSplice(qc::Qubit q1) const  {
+  [[nodiscard]] auto getRowSplice(qc::Qubit q1) const {
     std::vector<qc::Qubit> result;
 
     const auto& srcStart = weights_.begin() + q1 * n_;
@@ -56,28 +57,31 @@ public:
     return std::span{srcStart, n_};
   }
 
-  [[nodiscard]] auto getQubitNum() const -> std::size_t {
-    return n_;
-  }
+  [[nodiscard]] auto getQubitNum() const -> std::size_t { return n_; }
 };
 
 /**
- * @brief Computes the initial placement of qubits onto storage sites using COBRA.
+ * @brief Computes the initial placement of qubits onto storage sites using
+ * COBRA.
  *
- * Seeds placement at the site closest to the entanglement zone, then iteratively
- * expands placement outward using a priority search queue of adjacent slots to
- * place tightly coupled qubits in neighboring traps.
+ * Seeds placement at the site closest to the entanglement zone, then
+ * iteratively expands placement outward using a priority search queue of
+ * adjacent slots to place tightly coupled qubits in neighboring traps.
  *
  * @param nQubits Number of logical qubits in the circuit.
- * @param twoQubitGateLayers Layers of 2-qubit gates representing circuit interactions.
+ * @param twoQubitGateLayers Layers of 2-qubit gates representing circuit
+ * interactions.
  * @param architecture Target zoned neutral-atom hardware architecture.
- * @param reverseInitialPlacement If true, places qubits starting from the row closest
- * to the entanglement zone in reverse orientation.
+ * @param reverseInitialPlacement If true, places qubits starting from the row
+ * closest to the entanglement zone in reverse orientation.
+ * @param pruneCenter If true, no qubits will be placed in the center 2 columns
+ * of the storage zone if possible.
  * @return Mapping from logical qubits to physical sites (SLM traps).
  */
-[[nodiscard]] auto getAssignments(std::size_t nQubits,
-                    const std::vector<TwoQubitGateLayer>& twoQubitGateLayers,
-                    const Architecture& architecture,
-                    bool reverseInitialPlacement)-> std::unordered_map<qc::Qubit, Site>;
+[[nodiscard]] auto
+getAssignments(std::size_t nQubits,
+               const std::vector<TwoQubitGateLayer>& twoQubitGateLayers,
+               const Architecture& architecture, bool reverseInitialPlacement,
+               bool pruneCenter = false) -> std::unordered_map<qc::Qubit, Site>;
 
 } // namespace na::zoned::ips::cobra

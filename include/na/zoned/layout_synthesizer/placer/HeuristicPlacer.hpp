@@ -22,10 +22,10 @@
 #include <deque>
 #include <functional>
 #include <map>
-#include <set>
 #include <memory>
 #include <optional>
 #include <queue>
+#include <set>
 #include <spdlog/spdlog.h>
 #include <unordered_map>
 #include <unordered_set>
@@ -43,9 +43,6 @@ using RowColumnMap =
 /// An unordered set of rows or columns of an SLM.
 using RowColumnSet =
     std::unordered_set<std::pair<std::reference_wrapper<const SLM>, size_t>>;
-
-
-
 
 /**
  * @brief The heuristic placer is a class that provides a method to determine
@@ -122,7 +119,8 @@ public:
     /// The heuristic method used for the search (default: IDS).
     Method method = Method::IDS;
 
-    /// The Initial Placement Strategy used to create the Initial Mapping (default: Left to Right)
+    /// The Initial Placement Strategy used to create the Initial Mapping
+    /// (default: Left to Right)
     enum class InitialPlacementStrategy : uint8_t {
       Default,
       ZAP,
@@ -131,7 +129,11 @@ public:
       COBRA
     };
 
-    InitialPlacementStrategy initialPlacementStrategy = InitialPlacementStrategy::Default;
+    InitialPlacementStrategy initialPlacementStrategy =
+        InitialPlacementStrategy::Default;
+
+    bool pruneCenter = false;
+
     /**
      * @brief The heuristic used in the A* search contains a term that resembles
      * the standard deviation of the differences between the current and target
@@ -201,8 +203,8 @@ public:
 
     NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(
         Config, useWindow, windowMinWidth, windowRatio, windowShare, method,
-        deepeningFactor, deepeningValue, lookaheadFactor, reuseLevel, maxNodes,
-        trials, queueCapacity);
+        initialPlacementStrategy, pruneCenter, deepeningFactor, deepeningValue,
+        lookaheadFactor, reuseLevel, maxNodes, trials, queueCapacity);
   };
 
 private:
@@ -364,7 +366,8 @@ public:
     config_.initialPlacementStrategy = strategy;
   }
 
-  [[nodiscard]] auto getInitialPlacementStrategy() const noexcept -> InitialPlacementStrategy {
+  [[nodiscard]] auto getInitialPlacementStrategy() const noexcept
+      -> InitialPlacementStrategy {
     return config_.initialPlacementStrategy;
   }
 
@@ -873,48 +876,53 @@ private:
    * @return a list of tuples containing the SLM, row, and column of the atom's
    * initial placement
    */
-  [[nodiscard]] auto makeInitialPlacement(size_t nQubits) const
-    -> Placement;
+  [[nodiscard]] auto makeInitialPlacement(size_t nQubits) const -> Placement;
 
   /**
-   * @brief Gives the 1st each qubit was present in until phaseIdx == lookaheadWindow.
+   * @brief Gives the 1st each qubit was present in until phaseIdx ==
+   * lookaheadWindow.
    * @param nQubits is the total number of qubits in the quantum computation
    * @param lookaheadWindow defines how far the search space should go.
-   * @param twoQubitGateLayers is a list of all layers containing 2 qubit gate interactions.
+   * @param twoQubitGateLayers is a list of all layers containing 2 qubit gate
+   * interactions.
    * @return A mapping from qubit to the earliest layer it appears in.
    */
-  [[nodiscard]] auto getFirstStages(
-    std::size_t nQubits,
-    std::size_t lookaheadWindow,
-    const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
-    -> std::unordered_map<qc::Qubit, std::size_t>;
+  [[nodiscard]] auto
+  getFirstStages(std::size_t nQubits, std::size_t lookaheadWindow,
+                 const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
+      -> std::unordered_map<qc::Qubit, std::size_t>;
 
   [[nodiscard]] auto getFirstStagesPair(
-    std::size_t lookaheadWindow,
-    const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
-    -> std::unordered_map<std::pair<qc::Qubit, qc::Qubit>, std::size_t>;
+      std::size_t lookaheadWindow,
+      const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
+      -> std::unordered_map<std::pair<qc::Qubit, qc::Qubit>, std::size_t>;
 
   /**
-   * @brief Gives the 1st each qubit was present in until phaseIdx == lookaheadWindow.
+   * @brief Gives the 1st each qubit was present in until phaseIdx ==
+   * lookaheadWindow.
    * @param zoneSlots
    * @param qubitWeightList
    * @param firstStages
    * @param nQubits is the total number of qubits in the quantum computation
    * @return A mapping from qubit to the earliest layer it appears in.
    */
-  [[nodiscard]] auto getAssignments(const std::vector<std::pair<Site, double>>& zoneSlots,
-    const std::vector<std::pair<qc::Qubit, double>>& qubitWeightList,
-    const std::unordered_map<qc::Qubit, std::size_t>& firstStages,
-    std::size_t nQubits) const
-    -> std::unordered_map<qc::Qubit, Site>;
+  [[nodiscard]] auto getAssignments(
+      const std::vector<std::pair<Site, double>>& zoneSlots,
+      const std::vector<std::pair<qc::Qubit, double>>& qubitWeightList,
+      const std::unordered_map<qc::Qubit, std::size_t>& firstStages,
+      std::size_t nQubits) const -> std::unordered_map<qc::Qubit, Site>;
 
-  [[nodiscard]] auto getAssignmentsBasicPair( //please only use with lookaheadWindow = 1
-    const std::vector<std::pair<Site, double>>& zoneSlots,
-    const std::vector<std::pair<std::pair<qc::Qubit, qc::Qubit>, double>>& qubitWeightPairList,
-    const std::vector<std::pair<qc::Qubit, double>>& qubitWeightList) const
-    -> std::unordered_map<qc::Qubit, Site>;
+  [[nodiscard]] auto
+  getAssignmentsBasicPair( // please only use with lookaheadWindow = 1
+      const std::vector<std::pair<Site, double>>& zoneSlots,
+      const std::vector<std::pair<std::pair<qc::Qubit, qc::Qubit>, double>>&
+          qubitWeightPairList,
+      const std::vector<std::pair<qc::Qubit, double>>& qubitWeightList) const
+      -> std::unordered_map<qc::Qubit, Site>;
 
-  [[nodiscard]] auto testOutput(const std::unordered_map<qc::Qubit, Site>& assignments, std::size_t nQubits) const;
+  [[nodiscard]] auto
+  testOutput(const std::unordered_map<qc::Qubit, Site>& assignments,
+             std::size_t nQubits) const;
 
   [[nodiscard]] auto getCOBRA();
 
@@ -926,10 +934,9 @@ private:
    * @return a list of tuples containing the SLM, row, and column of the atom's
    * initial placement
    */
-  [[nodiscard]] auto makeInitialPlacementMulti(size_t nQubits,
-    const std::vector<TwoQubitGateLayer>& twoQubitGateLayers,
-    Config::InitialPlacementStrategy ips) const
-    -> Placement;
+  [[nodiscard]] auto makeInitialPlacementMulti(
+      size_t nQubits, const std::vector<TwoQubitGateLayer>& twoQubitGateLayers,
+      Config::InitialPlacementStrategy ips) const -> Placement;
 
   /**
    * @brief Generates the placements for the next two-qubit and single-qubit

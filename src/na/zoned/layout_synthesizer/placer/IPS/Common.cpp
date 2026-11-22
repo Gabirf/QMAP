@@ -1,6 +1,8 @@
 
 #include "na/zoned/layout_synthesizer/placer/IPS/Common.hpp"
 
+#include <utility>
+
 namespace na::zoned::ips::common {
 auto getStorageZoneSizes(const Architecture& architecture)
     -> std::pair<std::size_t, std::size_t> {
@@ -18,7 +20,8 @@ auto getStorageZoneSizes(const Architecture& architecture)
   return std::pair{nRowsTotal, nColsTotal};
 }
 
-// TODO: Doesn't yet work for multiple storage zones (change rows and cols assigned to Site)
+// TODO: Doesn't yet work for multiple storage zones (change rows and cols
+// assigned to Site)
 auto getStorageZoneSlots(const Architecture& architecture,
                          bool reverseInitialPlacement)
     -> std::vector<std::pair<Site, double>> {
@@ -159,7 +162,8 @@ auto countConflictsWithGroup(const Movement& move_cand,
   return conflicts;
 }
 
-auto getHeightLimit(std::size_t nQubits, const Architecture& architecture) -> std::size_t {
+auto getHeightLimit(std::size_t nQubits, const Architecture& architecture)
+    -> std::size_t {
   auto nColsTotal = getStorageZoneSizes(architecture).second;
   return 1 + (nQubits - 1) / nColsTotal;
 }

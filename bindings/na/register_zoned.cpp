@@ -95,7 +95,6 @@ Returns:
       .value("VIPER", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::VIPER)
       .value("COBRA", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::COBRA)
       .export_values();
-
   //===--------------------------------------------------------------------===//
   // Placement Method Enum
   //===--------------------------------------------------------------------===//
@@ -253,6 +252,7 @@ Returns:
            const double windowShare,
            const na::zoned::HeuristicPlacer::Config::Method placementMethod,
            const na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy initialPlacementStrategy,
+           const bool pruneCenter,
            const float deepeningFactor, const float deepeningValue,
            const float lookaheadFactor, const float reuseLevel,
            const size_t maxNodes, const size_t trials,
@@ -269,6 +269,7 @@ Returns:
               .windowShare = windowShare,
               .method = placementMethod,
               .initialPlacementStrategy = initialPlacementStrategy,
+              .pruneCenter = pruneCenter,
               .deepeningFactor = deepeningFactor,
               .deepeningValue = deepeningValue,
               .lookaheadFactor = lookaheadFactor,
@@ -301,6 +302,8 @@ Returns:
             defaultConfig.layoutSynthesizerConfig.placerConfig.method,
         "initial_placement_strategy"_a =
             defaultConfig.layoutSynthesizerConfig.placerConfig.initialPlacementStrategy,
+        "prune_center"_a =
+            defaultConfig.layoutSynthesizerConfig.placerConfig.pruneCenter,
         "deepening_factor"_a =
             defaultConfig.layoutSynthesizerConfig.placerConfig.deepeningFactor,
         "deepening_value"_a =

@@ -160,6 +160,7 @@ class RoutingAwareCompiler:
         window_share: float = 0.8,
         placement_method: PlacementMethod = ...,
         initial_placement_strategy: InitialPlacementStrategy = ...,
+        prune_center: bool = False,
         deepening_factor: float = ...,
         deepening_value: float = 0.0,
         lookahead_factor: float = ...,
@@ -182,6 +183,8 @@ class RoutingAwareCompiler:
             window_ratio: The ratio between the height and the width of the window
             window_share: The share of free sites in the window in relation to the number of atoms to be moved in this step
             placement_method: The placement method that should be used for the heuristic placer
+            initial_placement_strategy: The initial placement strategy (Default, ZAP, BasicPair, VIPER, COBRA)
+            prune_center: Whether to prune the center columns in the storage zone during initial placement
             deepening_factor: Controls the impact of the term in the heuristic of the A* search that resembles the standard deviation of the differences between the current and target sites of the atoms to be moved in every orientation
             deepening_value: Is added to the sum of standard deviations before it is multiplied with the number of unplaced nodes and :attr:`deepening_factor`
             lookahead_factor: Controls the lookahead's influence that considers the distance of atoms to their interaction partner in the next layer
