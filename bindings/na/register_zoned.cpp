@@ -91,7 +91,7 @@ Returns:
       m, "InitialPlacementStrategy")
       .value("Default", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::Default)
       .value("ZAP", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::ZAP)
-      .value("BasicPair", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::BasicPair)
+      .value("ASP", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::ASP)
       .value("VIPER", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::VIPER)
       .value("COBRA", na::zoned::HeuristicPlacer::Config::InitialPlacementStrategy::COBRA)
       .export_values();

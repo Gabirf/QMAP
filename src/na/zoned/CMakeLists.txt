@@ -16,6 +16,8 @@ if(NOT TARGET ${TARGET_NAME})
           layout_synthesizer/placer/IPS/COBRA.cpp
           layout_synthesizer/placer/IPS/Common.cpp
           layout_synthesizer/placer/IPS/Viper.cpp
+          layout_synthesizer/placer/IPS/Asp.cpp
+          layout_synthesizer/placer/IPS/Zap.cpp
   )
 
   target_include_directories(${TARGET_NAME} PUBLIC $<BUILD_INTERFACE:${MQT_QMAP_INCLUDE_BUILD_DIR}>)

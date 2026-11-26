@@ -142,7 +142,7 @@ class InitialPlacementStrategy(enum.Enum):
 
     Default = 0
     ZAP = 1
-    BasicPair = 2
+    ASP = 2
     VIPER = 3
     COBRA = 4
 

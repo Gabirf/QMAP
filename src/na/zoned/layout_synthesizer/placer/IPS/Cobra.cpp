@@ -323,7 +323,7 @@ auto getAssignments(const std::size_t nQubits,
     visitedSlots.reserve(zoneSlots.size());
     maxHeight = common::pruneColumns(
         nQubits, nRows, nCols, zoneSlots,
-        [&](const bool isPruned) { visitedSlots.emplace_back(isPruned); },
+        [&](const auto /*site*/, const bool isPruned) { visitedSlots.emplace_back(isPruned); },
         [&]() { visitedSlots.resize(zoneSlots.size(), false); },
         predicateCenter);
   } else {

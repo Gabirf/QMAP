@@ -124,7 +124,7 @@ public:
     enum class InitialPlacementStrategy : uint8_t {
       Default,
       ZAP,
-      BasicPair,
+      ASP,
       VIPER,
       COBRA
     };
@@ -878,53 +878,9 @@ private:
    */
   [[nodiscard]] auto makeInitialPlacement(size_t nQubits) const -> Placement;
 
-  /**
-   * @brief Gives the 1st each qubit was present in until phaseIdx ==
-   * lookaheadWindow.
-   * @param nQubits is the total number of qubits in the quantum computation
-   * @param lookaheadWindow defines how far the search space should go.
-   * @param twoQubitGateLayers is a list of all layers containing 2 qubit gate
-   * interactions.
-   * @return A mapping from qubit to the earliest layer it appears in.
-   */
-  [[nodiscard]] auto
-  getFirstStages(std::size_t nQubits, std::size_t lookaheadWindow,
-                 const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
-      -> std::unordered_map<qc::Qubit, std::size_t>;
-
-  [[nodiscard]] auto getFirstStagesPair(
-      std::size_t lookaheadWindow,
-      const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
-      -> std::unordered_map<std::pair<qc::Qubit, qc::Qubit>, std::size_t>;
-
-  /**
-   * @brief Gives the 1st each qubit was present in until phaseIdx ==
-   * lookaheadWindow.
-   * @param zoneSlots
-   * @param qubitWeightList
-   * @param firstStages
-   * @param nQubits is the total number of qubits in the quantum computation
-   * @return A mapping from qubit to the earliest layer it appears in.
-   */
-  [[nodiscard]] auto getAssignments(
-      const std::vector<std::pair<Site, double>>& zoneSlots,
-      const std::vector<std::pair<qc::Qubit, double>>& qubitWeightList,
-      const std::unordered_map<qc::Qubit, std::size_t>& firstStages,
-      std::size_t nQubits) const -> std::unordered_map<qc::Qubit, Site>;
-
-  [[nodiscard]] auto
-  getAssignmentsBasicPair( // please only use with lookaheadWindow = 1
-      const std::vector<std::pair<Site, double>>& zoneSlots,
-      const std::vector<std::pair<std::pair<qc::Qubit, qc::Qubit>, double>>&
-          qubitWeightPairList,
-      const std::vector<std::pair<qc::Qubit, double>>& qubitWeightList) const
-      -> std::unordered_map<qc::Qubit, Site>;
-
   [[nodiscard]] auto
   testOutput(const std::unordered_map<qc::Qubit, Site>& assignments,
              std::size_t nQubits) const;
-
-  [[nodiscard]] auto getCOBRA();
 
   /**
    * @brief This function imitates ZAP's initial placement.

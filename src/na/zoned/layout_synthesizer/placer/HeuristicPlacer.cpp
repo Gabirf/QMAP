@@ -12,6 +12,8 @@
 
 #include "ir/Definitions.hpp"
 #include "na/zoned/Architecture.hpp"
+#include "na/zoned/layout_synthesizer/placer/IPS/Zap.hpp"
+#include "na/zoned/layout_synthesizer/placer/IPS/Asp.hpp"
 #include "na/zoned/layout_synthesizer/placer/IPS/Cobra.hpp"
 #include "na/zoned/layout_synthesizer/placer/IPS/Common.hpp"
 #include "na/zoned/layout_synthesizer/placer/IPS/Viper.hpp"
@@ -175,210 +177,6 @@ auto HeuristicPlacer::discretizeNonOccupiedEntanglementSites(
   return std::pair{rowIndices, columnIndices};
 }
 
-auto HeuristicPlacer::getFirstStages(
-    const std::size_t nQubits, const std::size_t lookaheadWindow,
-    const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
-    -> std::unordered_map<qc::Qubit, std::size_t> {
-
-  std::unordered_map<qc::Qubit, std::size_t> qubitMap;
-  std::size_t idx = 0;
-
-  for (const auto& layer : twoQubitGateLayers) {
-    for (const auto& pair : layer) {
-
-      if (!qubitMap.contains(pair[0])) {
-        qubitMap[pair[0]] = idx;
-      }
-      if (!qubitMap.contains(pair[1])) {
-        qubitMap[pair[1]] = idx;
-      }
-    }
-
-    if (idx == lookaheadWindow || qubitMap.size() == nQubits) {
-      break;
-    }
-    idx++;
-  }
-  return qubitMap;
-}
-
-auto HeuristicPlacer::getFirstStagesPair(
-    const std::size_t lookaheadWindow,
-    const std::vector<TwoQubitGateLayer>& twoQubitGateLayers) const
-    -> std::unordered_map<std::pair<qc::Qubit, qc::Qubit>, std::size_t> {
-
-  std::unordered_map<std::pair<qc::Qubit, qc::Qubit>, std::size_t> qubitMap;
-  std::size_t idx = 0;
-
-  for (const auto& layer : twoQubitGateLayers) {
-    for (const auto& pair : layer) {
-
-      if (!qubitMap.contains(pair)) {
-        qubitMap[pair] = idx;
-      }
-    }
-
-    if (idx == lookaheadWindow) {
-      break;
-    }
-    idx++;
-  }
-  return qubitMap;
-}
-
-// TODO for initial smart split
-/*
-auto HeuristicPlacer::blockToColStats( const Block& block,
-    const std::vector<ColumnPair*>& columnPairs,
-    const std::size_t maxHeight) const
-    -> std::pair<bool, std::size_t> {
-
-  if (block.qubitPairs.size() > maxHeight * columnPairs.size()) {
-    return {false, 0};
-  }
-
-  for (const auto& pair : block.qubitPairs) {
-
-  }
-}*/
-
-auto HeuristicPlacer::getAssignments(
-    const std::vector<std::pair<Site, double>>& zoneSlots,
-    const std::vector<std::pair<qc::Qubit, double>>& qubitWeightList,
-    const std::unordered_map<qc::Qubit, std::size_t>& firstStages,
-    const std::size_t nQubits) const -> std::unordered_map<qc::Qubit, Site> {
-
-  std::unordered_map zoneSlotsMap(zoneSlots.begin(), zoneSlots.end());
-  std::vector<ips::common::Movement> group;
-  std::unordered_map<qc::Qubit, Site> results;
-
-  for (const auto& qc : qubitWeightList | std::views::keys) {
-
-    std::pair<std::optional<std::pair<Site, Site>>, double> minScore = {
-        std::nullopt, 1e308};
-    auto minScoreMove = ips::common::Movement();
-
-    for (const auto& site : zoneSlots | std::views::keys) {
-      constexpr double lamda = 10.0;
-
-      if (!zoneSlotsMap.contains(site)) {
-        continue;
-      }
-
-      auto& slm = std::get<0>(site);
-      auto row = std::get<1>(site);
-      auto col = std::get<2>(site);
-
-      const auto& entangleSite = architecture_.get().nearestEntanglementSite(
-          slm, row, col, slm, row, col);
-      const auto& [entangleSLM, entangleRow, entangleCol] = entangleSite;
-
-      auto& [x0, y0] = slm.get().location;
-      auto rowCoord = y0 + slm.get().siteSeparation.second * row;
-      auto colCoord = x0 + slm.get().siteSeparation.first * col;
-
-      auto& [entx0, enty0] = entangleSLM.get().location;
-      auto entRowCoord =
-          enty0 + entangleSLM.get().siteSeparation.second * entangleRow;
-      auto entColCoord =
-          entx0 + entangleSLM.get().siteSeparation.first * entangleCol;
-      auto movement =
-          ips::common::Movement(rowCoord, entRowCoord, colCoord, entColCoord);
-
-      std::size_t count = 0;
-      if (firstStages.contains(qc)) {
-        count = countConflictsWithGroup(movement, group);
-      }
-      double distance = architecture_.get().nearestEntanglementSiteDistance(
-          slm, row, col, slm, row, col);
-
-      double score = lamda * static_cast<double>(count) + distance;
-
-      if (score < minScore.second) {
-        minScore.first = {site, entangleSite};
-        minScore.second = score;
-        minScoreMove = movement;
-      }
-    }
-
-    if (!minScore.first.has_value()) {
-      throw std::runtime_error(
-          "Error: No available storage slot found for qubit assignment!");
-    }
-
-    const auto& site = minScore.first->first;
-    zoneSlotsMap.erase(site);
-    if (firstStages.contains(qc)) {
-      group.emplace_back(minScoreMove);
-    }
-    results.emplace(qc, site);
-  }
-
-  for (std::size_t i = 0; i < nQubits; ++i) {
-    const auto qc = static_cast<qc::Qubit>(i);
-
-    if (!results.contains(qc)) {
-
-      std::pair<std::optional<Site>, double> minScore = {std::nullopt, 1e308};
-      for (const auto& site : zoneSlots | std::views::keys) {
-        if (!zoneSlotsMap.contains(site)) {
-          continue;
-        }
-
-        auto& slm = std::get<0>(site);
-        auto row = std::get<1>(site);
-        auto col = std::get<2>(site);
-
-        double distance = architecture_.get().nearestEntanglementSiteDistance(
-            slm, row, col, slm, row, col);
-
-        if (distance < minScore.second) {
-          minScore.first = site;
-          minScore.second = distance;
-        }
-      }
-
-      const auto& site = minScore.first;
-
-      if (!site.has_value()) {
-        throw std::runtime_error(
-            "Error: No available storage slot found for qubit assignment!");
-      }
-
-      zoneSlotsMap.erase(*site);
-      results.emplace(qc, *site);
-    }
-  }
-
-  return results;
-}
-
-auto HeuristicPlacer::getAssignmentsBasicPair( // please only use with
-                                               // lookaheadWindow = 1
-    const std::vector<std::pair<Site, double>>& zoneSlots,
-    const std::vector<std::pair<std::pair<qc::Qubit, qc::Qubit>, double>>&
-        qubitWeightPairList,
-    const std::vector<std::pair<qc::Qubit, double>>& qubitWeightList) const
-    -> std::unordered_map<qc::Qubit, Site> {
-
-  std::unordered_map<qc::Qubit, Site> result;
-  std::size_t idx = 0;
-
-  for (const auto& pair : qubitWeightPairList | std::views::keys) {
-    result.emplace(pair.first, zoneSlots[idx++].first);
-    result.emplace(pair.second, zoneSlots[idx++].first);
-  }
-
-  for (const auto& qubit : qubitWeightList | std::views::keys) {
-
-    if (!result.contains(qubit)) {
-      result.emplace(qubit, zoneSlots[idx++].first);
-    }
-  }
-
-  return result;
-}
-
 auto HeuristicPlacer::makeInitialPlacement(const size_t nQubits) const
     -> Placement {
   auto slmIt = architecture_.get().storageZones.cbegin();
@@ -434,61 +232,19 @@ auto HeuristicPlacer::makeInitialPlacementMulti(
 
   Placement initialPlacement;
   initialPlacement.reserve(nQubits);
-
-  std::vector<std::pair<Site, double>> zoneSlots =
-      ips::common::getStorageZoneSlots(architecture_, reverseInitialPlacement_);
-
-  std::printf("Slots: %zu, Qubits: %zu\n", zoneSlots.size(), nQubits);
-  if (zoneSlots.size() < nQubits) {
-    throw std::invalid_argument("Too many qubits for this architecture.\n");
-  }
-
+  
   std::unordered_map<qc::Qubit, Site> assignments;
   switch (ips) {
 
   case InitialPlacementStrategy::ZAP: {
-    std::ranges::sort(zoneSlots, [](const auto& a, const auto& b) {
-      return a.second < b.second;
-    });
-    if (zoneSlots.size() > nQubits) {
-      zoneSlots.erase(zoneSlots.begin() + static_cast<std::ptrdiff_t>(nQubits),
-                      zoneSlots.end());
-    }
-    std::vector<std::pair<qc::Qubit, double>> qubitWeightList =
-        ips::common::getQubitWeightList(twoQubitGateLayers);
-    constexpr std::size_t lookaheadWindow =
-        10; // Can be changed but defined as 2 in ZAP
-    std::unordered_map<qc::Qubit, std::size_t> firstStages =
-        getFirstStages(nQubits, lookaheadWindow, twoQubitGateLayers);
-    std::ranges::sort(qubitWeightList, [](const auto& a, const auto& b) {
-      return a.second > b.second;
-    });
-
-    assignments =
-        getAssignments(zoneSlots, qubitWeightList, firstStages, nQubits);
+    assignments = ips::zap::getAssignments(
+        nQubits, twoQubitGateLayers, architecture_, reverseInitialPlacement_);
     break;
   }
 
-  case InitialPlacementStrategy::BasicPair: {
-    zoneSlots.erase(zoneSlots.begin() + static_cast<std::ptrdiff_t>(nQubits),
-                    zoneSlots.end());
-    constexpr std::size_t lookaheadWindow = 1; // must be 1 for this IPS
-    std::vector<std::pair<qc::Qubit, double>> qubitWeightList =
-        ips::common::getQubitWeightList(twoQubitGateLayers);
-    auto qubitPairWeightList = ips::common::getQubitPairWeightList(
-        twoQubitGateLayers, lookaheadWindow);
-    const auto firstStages =
-        getFirstStagesPair(lookaheadWindow, twoQubitGateLayers);
-
-    std::ranges::sort(qubitWeightList, [](const auto& a, const auto& b) {
-      return a.second > b.second;
-    });
-    std::ranges::sort(qubitPairWeightList, [](const auto& a, const auto& b) {
-      return a.second > b.second;
-    });
-
-    assignments = getAssignmentsBasicPair(zoneSlots, qubitPairWeightList,
-                                          qubitWeightList);
+  case InitialPlacementStrategy::ASP: {
+    assignments = ips::asp::getAssignments(
+        nQubits, twoQubitGateLayers, architecture_, reverseInitialPlacement_);
     break;
   }
 

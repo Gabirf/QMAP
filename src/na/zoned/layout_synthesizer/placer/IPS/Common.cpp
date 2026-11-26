@@ -115,12 +115,17 @@ auto getQubitPairWeightList(
   std::map<std::pair<qc::Qubit, qc::Qubit>, double> result;
   std::size_t idx = 0;
 
+  std::set<qc::Qubit> assignedQubits;
   idx = 0;
   for (const auto& layer : twoQubitGateLayers) {
 
     for (const auto& pair : layer) {
 
-      result[pair] += (qubitMap[pair[0]] + qubitMap[pair[1]]) / 2;
+      if (!(assignedQubits.contains(pair[0]) || assignedQubits.contains(pair[1]))) {
+        result[pair] += (qubitMap[pair[0]] + qubitMap[pair[1]]) / 2;
+        assignedQubits.insert(pair[0]);
+        assignedQubits.insert(pair[1]);
+      }
     }
 
     idx++;
